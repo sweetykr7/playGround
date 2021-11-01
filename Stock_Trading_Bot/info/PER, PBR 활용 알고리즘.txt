@@ -1,0 +1,240 @@
+# PER(Price Earning Ratio : 주가수익배율)
+#   - 주가를 주당순이익(EPS)으로 나눈 수치
+#   - 주가가 주당순이익의 몇 배인가를 의미
+#   - 계산법
+#      *방법1) PER = 주가 / 주당순이익
+#      *방법2) PER = 시가 총액 / 연간 순이익
+#           ex1) 시가총액 1000억(A기업), 순이익이 100억 -> PER : 10(배)
+#           ex2) 시가총액 500억(B기업), 순이익 100억 -> PER : 5(배)
+            #   - PER가 5배라면 5년간의 순이익만으로 투자원금을 회수할 수 있다는 뜻
+            #   - 투자수익률로 환산하면 연간 20%
+#   - 절대기준은 아니지만 일반적으로 PER비율이 낮으면(저PER 주) 가치대비 주가가 싸다는 뜻
+
+# PBR(Price to Book Ratio : 주가순자산비율)
+#   - 계산법
+#      *방법1) PBR = 주가 / 주당순자산
+#      *방법2) PBR = 시가총액 / 순자산
+#             ex1)  시가총액 1000억(A기업), 순자산 1000억 -> PBR : 1(배)
+#             ex2)  시가총액 1000억(B기업), 순자산 100억 -> PBR : 10(배)
+#   - 기업의 순자산대비에 시가총액이 몇 배 인지를 의미
+#   - 기업의 자산 : 부채 + 자본(순자산)
+#   - 순자산 : 자산 - 부채
+#   - PBR 역시 PER와 마찬가지로, 낮은 수치를 형성할수록 주가가 싼 것으로 받아들여진다.
+
+# 주의 ! : 낮은 PER와 PBR을 가진 주식이 항상 투자가치가 높은 주식으로 평가받는 것은 아니다. 단순히 보조지표로서 활용하는 것을 권장
+
+
+# 시뮬레이팅 테스트 (저PER, 저PBR 우선 순위 매매)
+# PER, PBR이 낮은 것을 우선 순위를 두고 매매하는 예제
+# -> PER + PBR 결과 오름차순 정렬
+
+# stock_finance 테이블을 참고한다.
+SELECT * FROM stock_finance;
+
+# daily_buy_list의 날짜 테이블과 조인한다
+SELECT * FROM `20201015` DAY, stock_finance FIN
+WHERE DAY.code = FIN.code;
+
+# 원하는 날짜의 데이터를 찾는다.
+SELECT DAY.code_name, FIN.*
+FROM `20201015` DAY, stock_finance FIN
+WHERE DAY.code = FIN.code
+AND FIN.date = '20201015';
+
+# 원하는 조건을 분석 한다.
+SELECT DAY.code_name, FIN.PER, FIN.PBR
+FROM `20201015` DAY, stock_finance FIN
+WHERE DAY.code = FIN.code
+AND FIN.date = '20201015';
+
+# 예외 처리를 한다.
+SELECT DAY.code_name, FIN.PER, FIN.PBR
+FROM `20201015` DAY, stock_finance FIN
+WHERE DAY.code = FIN.code
+AND FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != '';
+
+# 데이터를 가공한다.
+SELECT DAY.code_name, FIN.PER, FIN.PBR, FIN.PER+FIN.PBR
+FROM `20201015` DAY, stock_finance FIN
+WHERE DAY.code = FIN.code
+AND FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != '';
+
+# 매수 우선 순위를 정한다.
+# order by 컬럼명: 오름차순
+# order by 컬럼명 desc : 내림차순
+SELECT DAY.code_name, FIN.PER, FIN.PBR, FIN.PER+FIN.PBR
+FROM `20201015` DAY, stock_finance FIN
+WHERE DAY.code = FIN.code
+AND FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != ''
+ORDER BY FIN.PER + FIN.PBR ;
+
+# 종가가 invest_unit 을 넘는 종목은 제외
+SELECT DAY.code_name, FIN.PER, FIN.PBR, FIN.PER+FIN.PBR
+FROM `20201015` DAY, stock_finance FIN
+WHERE DAY.code = FIN.code
+AND FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != ''
+AND DAY.close < 1000000
+ORDER BY FIN.PER+FIN.PBR;
+;
+
+
+# limit을 활용할 수 있다.
+# ex ) limit 100 -> 정렬 순으로 100개만 산출
+SELECT DAY.code_name, FIN.PER, FIN.PBR, FIN.PER+FIN.PBR
+FROM `20201015` DAY, stock_finance FIN
+WHERE DAY.code = FIN.code
+AND FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != ''
+AND DAY.close < 1000000
+ORDER BY FIN.PER+FIN.PBR
+LIMIT 100;
+
+# 코스피, 코스닥만 거래하겠다. stock_info JOIN 해서 활용
+SELECT * FROM stock_info;
+
+SELECT DAY.code_name, INF.stock_market, FIN.PER, FIN.PBR, FIN.PER+FIN.PBR
+FROM `20201015` DAY, stock_finance FIN, stock_info INF
+WHERE DAY.code = FIN.code
+AND DAY.code = INF.code
+AND FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != ''
+AND DAY.close < 1000000
+AND INF.stock_market in ('거래소', '코스닥')
+ORDER BY FIN.PER+FIN.PBR
+LIMIT 100;
+
+# 여러 조건 추가 가능
+# audit 이 정상이고,
+# 우량기업, 신성장기업 중,
+# 증거금율이 40%이하이며,
+# 거래정지, 관리종목을 제외한 종목리스트
+SELECT DAY.code_name, INF.stock_market, FIN.PER, FIN.PBR, FIN.PER+FIN.PBR
+FROM `20201015` DAY, stock_finance FIN, stock_info INF
+WHERE DAY.code = FIN.code
+AND DAY.code = INF.code
+AND FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != ''
+AND DAY.close < 1000000
+AND INF.stock_market in ('거래소', '코스닥')
+AND INF.category0 IN ("우량기업", "신성장기업")
+AND INF.audit = '정상'
+AND INF.margin <= 40
+AND INF.remarks NOT LIKE "%관리종목%"
+AND INF.remarks NOT LIKE "%거래정지%"
+ORDER BY FIN.PER+FIN.PBR
+LIMIT 100;
+
+
+# 알고리즘 적용 (SELECT DAY.* 필수!)
+# 주의 : 최소 stock_finance 에 이틀치 데이터가 있어야 테스트 가능
+SELECT DAY.*
+FROM `20201015` DAY, stock_finance FIN, stock_info INF
+WHERE DAY.code = FIN.code
+AND DAY.code = INF.code
+AND FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != ''
+AND DAY.close < 1000000
+AND INF.stock_market in ('거래소', '코스닥')
+AND INF.category0 IN ("우량기업", "신성장기업")
+AND INF.audit = '정상'
+AND INF.margin <= 40
+AND INF.remarks NOT LIKE "%관리종목%"
+AND INF.remarks NOT LIKE "%거래정지%"
+ORDER BY FIN.PER+FIN.PBR
+LIMIT 100;
+
+
+
+
+
+
+
+
+# [보충 설명]
+# 일반적으로 저PER, 저PBR 전략은 위와 같이 단순히 PER + PBR 이 아닌 PER 와 PBR의 순위를 합산하여 오름차순 정렬을 하는 방법을 사용합니다.
+# rank 내장 함수를 이용하여 PER 순위 계산 하는 방법
+# as 는 rank() over(order by FIN.PER) 를 RANK_PER라는 별칭으로 사용하겠다는 의미
+SELECT FIN.code, FIN.PER, rank() over(order by FIN.PER) as RANK_PER
+FROM  stock_finance FIN
+WHERE FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != '';
+
+# PER, PBR 모두 순위 계산 하는 방법
+SELECT FIN.code, FIN.PER, FIN.PBR, rank() over(order by FIN.PER) as RANK_PER, rank() over(order by FIN.PBR) as RANK_PBR
+FROM  stock_finance FIN
+WHERE FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != '';
+
+# PER 순위 + PBR 순위 오름차순 정렬 하는 방법
+SELECT FIN.code, FIN.PER, FIN.PBR, rank() over(order by FIN.PER) + rank() over(order by FIN.PBR) as SUM_PERPBR
+FROM  stock_finance FIN, `20201015` DAY
+WHERE FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != ''
+AND FIN.code = DAY.code
+ORDER BY (rank() over(order by FIN.PER)) + (rank() over(order by FIN.PBR));
+
+
+# 13번 알고리즘 적용 시 ? => ORDER BY FIN.PER+FIN.PBR 을
+# 아래와 같이 ORDER BY (rank() over(order by FIN.PER)) + (rank() over(order by FIN.PBR)) 로 변경 해주면 됩니다.
+SELECT DAY.*
+FROM `20201015` DAY, stock_finance FIN, stock_info INF
+WHERE DAY.code = FIN.code
+AND DAY.code = INF.code
+AND FIN.date = '20201015'
+AND FIN.PER != '' AND FIN.PBR != ''
+AND DAY.close < 1000000
+AND INF.stock_market in ('거래소', '코스닥')
+AND INF.category0 IN ("우량기업", "신성장기업")
+AND INF.audit = '정상'
+AND INF.margin <= 40
+AND INF.remarks NOT LIKE "%관리종목%"
+AND INF.remarks NOT LIKE "%거래정지%"
+ORDER BY (rank() over(order by FIN.PER)) + (rank() over(order by FIN.PBR))
+LIMIT 100;
+
+
+
+
+
+
+
+
+
+# TIP) pycharm에서 쿼리 에러 발생 시 콘솔에 찍혀 있는
+#  쿼리문을 그대로 가져와서 실행 해보면 에러 구문을 금방 찾는다
+
+
+
+# 매수함수
+#         elif self.db_to_realtime_daily_buy_list_num == 13:
+#             sql = f'''
+#                 SELECT DAY.*
+#                 FROM `{date_rows_yesterday}` DAY, stock_finance FIN, stock_info INF
+#                 WHERE DAY.code = FIN.code
+#                 AND DAY.code = INF.code
+#                 AND FIN.date = '{date_rows_yesterday}'
+#                 AND FIN.PER != '' AND FIN.PBR != ''
+#                 AND DAY.close < {self.invest_unit}
+#                 AND INF.stock_market in ('거래소', '코스닥')
+#                 AND INF.category0 IN ("우량기업", "신성장기업")
+#                 AND INF.audit = '정상'
+#                 AND INF.margin <= 40
+#                 AND INF.remarks NOT LIKE "%관리종목%"
+#                 AND INF.remarks NOT LIKE "%거래정지%"
+#                 ORDER BY FIN.PER+FIN.PBR
+#                 LIMIT 100;
+#             '''
+#             realtime_daily_buy_list = self.engine_daily_buy_list.execute(sql).fetchall()
+
+
+
+
+# 변수 설정 함수
+#             elif self.simul_num == 18:
+#                 # stock_finance에 데이터가 쌓인 시점의 다음날로 self.simul_start_date 를 설정
+#                 self.simul_start_date = "20201016"
+#                 self.db_to_realtime_daily_buy_list_num = 13
