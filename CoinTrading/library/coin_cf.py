@@ -45,7 +45,3 @@ real_db_name="CoinBot"+str(real_simul_num)
 
 
 
-
-
-access_key = 'sIscEgFRd0LnPEIMpuZ8iQebEUUA6iaBFBqExxO1'
-secret_key = '5151mHAMLLzx2Ky2f3ns9MaZv0a4dTiU5E4xRGGB'
